@@ -9,8 +9,8 @@ public class SampleClientTest {
     @Test
     public void getAvgTimes() {
         double avgNoCache = SampleClient.getAvgTimes(false);
-//        double avgCached = SampleClient.getAvgTimes(true);
-//        assertTrue(avgCached < avgNoCache);
+        double avgCached = SampleClient.getAvgTimes(true);
+        assertTrue(avgCached < avgNoCache);
 
     }
 }
