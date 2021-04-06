@@ -7,15 +7,15 @@ import ca.uhn.fhir.rest.client.api.IHttpResponse;
 import ca.uhn.fhir.rest.client.interceptor.LoggingInterceptor;
 import ca.uhn.fhir.util.StopWatch;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.StringType;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.LongStream;
 
 public class SampleClient {
@@ -51,12 +51,12 @@ public class SampleClient {
     private static void searchByFamily(String family, boolean userCache){
 
         System.out.println("Searching "+ family);
-
+        Bundle response;
 
 
         //    Search for Patient resources
         if(userCache){
-            Bundle response = client
+            response = client
                     .search()
                     .forResource("Patient")
                     .where(Patient.FAMILY.matches().value(family))
@@ -65,7 +65,7 @@ public class SampleClient {
                     .execute();
 
         } else {
-            Bundle response = client
+            response = client
                     .search()
                     .forResource("Patient")
                     .where(Patient.FAMILY.matches().value(family))
@@ -74,7 +74,36 @@ public class SampleClient {
                     .execute();
         }
 
-//        System.out.println(response);
+        System.out.println(response);
+        printDetails(response);
+    }
+
+    private static void printDetails(Bundle response){
+        List<HashMap<String, String>> patients = new ArrayList<>();
+        ArrayList<Bundle.BundleEntryComponent> entry = (ArrayList<Bundle.BundleEntryComponent>) response.getEntry();
+//        Bundle.BundleEntryComponent e = entry.get(0);
+        entry.forEach(
+                e -> {
+                    Patient p = (Patient) e.getResource();
+                    List<HumanName> name =  p.getName();
+                    String lastName = name.get(0).getFamily();
+                    StringType firstName = name.get(0).getGiven().get(0);
+                    HashMap<String, String> details = new HashMap<>();
+                    details.put("first_name", firstName.toString());
+                    details.put("last_name", lastName);
+                    Date dob = p.getBirthDate();
+                    if(dob != null){
+                        details.put("dob", p.getBirthDate().toString());
+                    } else {
+                        details.put("dob", "");
+                    }
+                    patients.add(details);
+                }
+        );
+
+        // Sort and print
+        patients.stream().sorted(Comparator.comparing(a -> a.get("first_name"))).forEach(System.out::println);
+
     }
 
     // Load Names from file into memory
@@ -89,21 +118,3 @@ public class SampleClient {
     }
 
 }
-
-
-class ClientInterceptor implements IClientInterceptor{
-    static ArrayList<Long> responseTimes = new ArrayList<>();
-
-    @Override
-    public void interceptRequest(IHttpRequest iHttpRequest) {
-
-    }
-
-    @Override
-    public void interceptResponse(IHttpResponse iHttpResponse) throws IOException {
-        StopWatch sw =  iHttpResponse.getRequestStopWatch();
-        responseTimes.add(sw.getMillis());
-    }
-}
-
-
